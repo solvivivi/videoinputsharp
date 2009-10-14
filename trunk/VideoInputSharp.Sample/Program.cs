@@ -18,41 +18,55 @@ namespace VideoInputSharp.Sample
         [STAThread]
         static void Main(string[] args)
         {
-            const int DeviceID = 0;
+            const int DeviceID = 1;
             const int CaptureFps = 30;
             const int CaptureWidth = 640;
             const int CaptureHeight = 480;
 
             // lists all capture devices
-            ListDevices();
-
+            //ListDevices();
+            
             using (VideoInput vi = new VideoInput())
-            using (Bitmap bitmap = new Bitmap(CaptureWidth, CaptureHeight, System.Drawing.Imaging.PixelFormat.Format24bppRgb))
-            using (Form form = new Form() { Text = "VideoInputSharp sample", ClientSize = new Size(CaptureWidth, CaptureHeight) })
-            using (PictureBox pb = new PictureBox() { Dock = DockStyle.Fill, Image = bitmap })            
             {
                 // initializes settings
                 vi.SetIdealFramerate(DeviceID, CaptureFps);
                 vi.SetupDevice(DeviceID, CaptureWidth, CaptureHeight);
 
-                // allocates pixel data buffer
-                byte[] buffer = new byte[vi.GetSize(DeviceID)];
+                int width = vi.GetWidth(DeviceID);
+                int height = vi.GetHeight(DeviceID);
 
-                // shows window
-                form.Controls.Add(pb);
-                form.Show();
-
-                // captures until the window is closed
-                while (form.Created)
+                using (Bitmap bitmap = new Bitmap(width, height, PixelFormat.Format24bppRgb))
+                using (Form form = new Form() { Text = "VideoInputSharp sample", ClientSize = new Size(width, height) })
+                using (PictureBox pb = new PictureBox() { Dock = DockStyle.Fill, Image = bitmap })
                 {
-                    vi.GetPixels(DeviceID, buffer, false, true);
-                    WritePixels(bitmap, buffer);
-                    pb.Refresh();
-                    Application.DoEvents();
-                }
+                    // allocates pixel data buffer
+                    byte[] buffer = new byte[vi.GetSize(DeviceID)];
 
-                // stops capturing
-                vi.StopDevice(DeviceID);
+                    // to get the data from the device first check if the data is new
+                    if (vi.IsFrameNew(DeviceID))
+                    {
+                        vi.GetPixels(DeviceID, buffer, false, true);
+                    }
+
+                    // shows window
+                    form.Controls.Add(pb);
+                    form.Show();
+
+                    // captures until the window is closed
+                    while (form.Created)
+                    {
+                        if (vi.IsFrameNew(DeviceID))
+                        {
+                            vi.GetPixels(DeviceID, buffer, false, true);
+                        }
+                        WritePixels(bitmap, buffer);
+                        pb.Refresh();
+                        Application.DoEvents();
+                    }
+
+                    // stops capturing
+                    vi.StopDevice(DeviceID);
+                }
             }
         }
 
